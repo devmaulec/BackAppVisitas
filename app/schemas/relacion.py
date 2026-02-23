@@ -1,12 +1,14 @@
 from pydantic import BaseModel
 
-class RelacionCreate(BaseModel):
-    IdVisita: int
-    IdPersonalV: int
+class RelacionBase(BaseModel):
+    IdInvitacion: int
+    IdFormulario: int
     IdToken: int
+    IdTipoMulti: int
+    IdTipoDoc: int
 
-class RelacionResponse(RelacionCreate):
-    IdRelacion: int
+class RelacionCreate(RelacionBase):
+    pass
 
     class Config:
         orm_mode = True

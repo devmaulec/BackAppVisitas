@@ -4,17 +4,10 @@ from app.core.database import Base
 class Token(Base):
     __tablename__="tokens"
 
-    IdToken = Column(Integer, primary_key=True, index=True)
-    IdVisita = Column(Integer, ForeignKey("visitas.IdVisita"), nullable=False)
+    IdToken = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    IdInvitacion = Column(Integer, ForeignKey("Invitacion.IdInvitacion"), nullable=False)
     IdEmpleado = Column(Integer, ForeignKey("empleado.IdEmpleado"), nullable=False)
-    Token = Column(String(13), unique=True, nullable=False)
-
-    ShowVideo = Column(Boolean, default=False, nullable=False)  
-    ShowInfografia = Column(Boolean, default=False, nullable=False)  
-    ShowTerms = Column(Boolean, default=False, nullable=False)  
-
+    Token = Column(String(12), unique=True, nullable=False)
     FechaHoraEntrada = Column(DateTime, nullable=True)
     FechaHoraSalida = Column(DateTime, nullable=True)
-
-    FormularioCompleto = Column(Boolean, default=False, nullable=False)  # 👈 AQUI
     Concretado = Column(Boolean, default=False, nullable=False)

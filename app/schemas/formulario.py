@@ -1,16 +1,20 @@
 from pydantic import BaseModel
+from typing import List
 
-class FormularioVisita(BaseModel):
+class DocumentoCreate(BaseModel):
+    IdTipoDoc: int
+    Documento: str
 
-    token: str
+class FormularioBase(BaseModel):
+    IdInvitacion: int
 
-    NombreVisitante: str
-    Empresa: str
+class FormularioCreate(FormularioBase):
+    NombreC: str
+    Documentos: List[DocumentoCreate]
 
-    IdEmpleado: int
+class FormularioResponse(FormularioBase):
+    IdFormulario: int
+    NombreC: str
 
-    TipoFormulario: str
-
-    Producto: str | None = None
-    Asunto: str | None = None
-    Motivo: str | None = None
+    class Config:
+        orm_mode = True
