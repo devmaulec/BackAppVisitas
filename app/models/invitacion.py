@@ -9,5 +9,5 @@ class Invitacion(Base):
     Procedencia = Column(String(60), nullable=False)
     RFC = Column(String(60), nullable=False)
     Correo = Column(String(60), nullable=False)
-    IdTipoVisita = Column(Integer, ForeignKey("TipoVisita.IdTipoVisita"), nullable=False)
+    IdTipoVisita = Column(Integer, ForeignKey("tipovisita.IdTipoVisita"), nullable=False)
     Herramienta = Column(String(255))

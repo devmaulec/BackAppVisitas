@@ -6,6 +6,6 @@ class FormDocs(Base):
 
     IdFormDocs = Column(Integer, primary_key=True, index=True, autoincrement=True)
     IdFormulario = Column(Integer, ForeignKey("Formulario.IdFormulario"))
-    IdTipoDoc = Column(Integer, ForeignKey("TipoDoc.IdTipoDoc"))
+    IdTipoDoc = Column(Integer, ForeignKey("tipodoc.IdTipoDoc"))
     Documento = Column(String(255))
     Ruta = Column(String(255))
