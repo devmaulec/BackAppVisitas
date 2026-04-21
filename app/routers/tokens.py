@@ -1,12 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import func
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.core.deps import get_db
-from app.models.estadoformulario import EstadoFormulario
-from app.models.relacion import Relacion
-from app.models.tipomutimedia import TipoMultimedia
-from app.models.tokens import Token as TokenModel
 from app.schemas.tokens import TokenCreate, TokenResponse
 from app.utils.token_generador import generar_token_unico
 
@@ -17,26 +13,54 @@ def crear_token(data: TokenCreate, db: Session = Depends(get_db)):
 
     token_generado = generar_token_unico(db)
 
-    nuevo_token = TokenModel(
-        IdInvitacion=data.IdInvitacion,
-        IdEmpleado=data.IdEmpleado,
-        Token=token_generado,
-        Concretado=False
+    db.execute(
+        text("""
+            INSERT INTO Tokens (IdInvitacion, IdEmpleado, Token, Concretado)
+            VALUES (:id_invitacion, :id_empleado, :token, false)
+        """),
+        {
+            "id_invitacion": data.IdInvitacion,
+            "id_empleado": data.IdEmpleado,
+            "token": token_generado
+        }
     )
-
-    db.add(nuevo_token)
     db.commit()
-    db.refresh(nuevo_token)
 
-    return nuevo_token
+    id_token = db.execute(
+        text("SELECT LAST_INSERT_ID()")
+    ).scalar()
 
+    nuevo_token = db.execute(
+        text("""
+            SELECT 
+                IdToken,
+                IdInvitacion,
+                IdEmpleado,
+                Token,
+                Concretado
+            FROM Tokens
+            WHERE IdToken = :id_token
+        """),
+        {"id_token": id_token}
+    ).fetchone()
+
+    return TokenResponse.model_validate(nuevo_token)
 
 @router.get("/prevista/{token}")
 def prevista(token: str, db: Session = Depends(get_db)):
-    estados = db.query(EstadoFormulario)\
-        .join(TipoMultimedia)\
-        .filter(EstadoFormulario.IdToken == token)\
-        .all()
+
+    estados = db.execute(
+        text("""
+            SELECT 
+                ef.EstadoFormulario,
+                tm.Descripcion
+            FROM EstadoFormulario ef
+            JOIN TipoMultimedia tm 
+              ON tm.IdTipoMulti = ef.IdTipoMulti
+            WHERE ef.IdToken = :token
+        """),
+        {"token": token}
+    ).fetchall()
 
     response = {
         "showVideo": False,
@@ -48,36 +72,54 @@ def prevista(token: str, db: Session = Depends(get_db)):
     }
 
     for e in estados:
-        if e.TipoMultimedia.Descripcion == "VIDEO":
-            response["ShowVideos"] = e.EstadoFormulario
-        if e.TipoMultimedia.Descripcion == "INFOGRAFIA":
-            response["ShowInfografia"] = e.EstadoFormulario
-        if e.TipoMultimedia.Descripcion == "TERMINOS":
-            response["ShowTerms"] = e.EstadoFormulario
+        if e.Descripcion == "VIDEO":
+            response["showVideo"] = bool(e.EstadoFormulario)
+        elif e.Descripcion == "INFOGRAFIA":
+            response["showInfografia"] = bool(e.EstadoFormulario)
+        elif e.Descripcion == "TERMINOS":
+            response["showTerms"] = bool(e.EstadoFormulario)
             response["termsText"] = "Acepto normas de seguridad"
 
     return response
 
-
 @router.get("/estado/{token}")
 def estado_token(token: str, db: Session = Depends(get_db)):
 
-    token_db = db.query(TokenModel).filter(TokenModel.Token == token).first()
+    token_row = db.execute(
+        text("""
+            SELECT IdToken
+            FROM tokens
+            WHERE Token = :token
+            LIMIT 1
+        """),
+        {"token": token}
+    ).fetchone()
 
-    if not token_db:
+    if not token_row:
         raise HTTPException(status_code=404, detail="Token no encontrado")
-    
-    total = db.query(func.count(Relacion.IdFormulario)) \
-    .filter(Relacion.IdToken == token)\
-    .scalar()
 
-    completed = db.query(func.count(Relacion.IdFormulario))\
-    .filter(
-        EstadoFormulario.IdToken == token,
-        EstadoFormulario.EstadoFormulario == True
+    id_token = token_row.IdToken
+
+    total = db.execute(
+        text("""
+            SELECT COUNT(IdFormulario)
+            FROM relacion
+            WHERE IdToken = :id_token
+        """),
+        {"id_token": id_token}
     ).scalar()
 
-    return{
+    completed = db.execute(
+        text("""
+            SELECT COUNT(IdEstadoFormulario)
+            FROM estadoformulario
+            WHERE IdToken = :id_token
+              AND EstadoFormulario = 1
+        """),
+        {"id_token": id_token}
+    ).scalar()
+
+    return {
         "valid": True,
         "total": total or 0,
         "completed": completed or 0
